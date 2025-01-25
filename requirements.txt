@@ -1,4 +1,9 @@
 fastapi==0.115.6
 uvicorn==0.33.0
 asgiref==3.8.1
+cryptography==44.0.0
+mysql-connector-python
+PyMySQL==1.1.1
+SQLAlchemy==2.0.37
+
 

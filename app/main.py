@@ -1,27 +1,39 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
+from sqlalchemy.orm import Session
+from typing import List
+from app.models import Base, engine, get_db, Item, ItemSchema
 
+# Initialize FastAPI app
 app = FastAPI()
 
-# Dummy data: A list of items (simulating a database)
-items = [
-    {"id": 1, "name": "Laptop", "price": 1000.00, "description": "A high-performance laptop."},
-    {"id": 2, "name": "Smartphone", "price": 500.00, "description": "A feature-packed smartphone."},
-    {"id": 3, "name": "Headphones", "price": 100.00, "description": "Noise-cancelling headphones."},
-]
+# Create the database tables
+Base.metadata.create_all(bind=engine)
 
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to FastAPI!"}
+@app.get("/items", response_model=List[ItemSchema])
+def get_all_items(db: Session = Depends(get_db)):
+    """
+    Retrieve all items from the database.
+    """
+    items = db.query(Item).all()
+    return items
 
-@app.get("/items")
-def get_all_items():
-    """Return all items."""
-    return {"items": items}
+@app.get("/items/{item_id}", response_model=ItemSchema)
+def get_item(item_id: int, db: Session = Depends(get_db)):
+    """
+    Retrieve a specific item by its ID.
+    """
+    item = db.query(Item).filter(Item.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return item
 
-@app.get("/items/{item_id}")
-def get_item_by_id(item_id: int):
-    """Return a specific item by ID."""
-    for item in items:
-        if item["id"] == item_id:
-            return item
-    raise HTTPException(status_code=404, detail="Item not found")
+@app.post("/items", response_model=ItemSchema)
+def create_item(item: ItemSchema, db: Session = Depends(get_db)):
+    """
+    Create a new item.
+    """
+    new_item = Item(name=item.name, description=item.description)
+    db.add(new_item)
+    db.commit()
+    db.refresh(new_item)
+    return new_item
